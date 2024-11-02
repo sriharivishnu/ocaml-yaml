@@ -33,6 +33,9 @@ module M (F : Ctypes.FOREIGN) = struct
   let token_delete =
     foreign "yaml_token_delete" C.(ptr T.Token.t @-> returning void)
 
+  let event_delete =
+    foreign "yaml_event_delete" C.(ptr T.Event.t @-> returning void)
+
   let parser_init =
     foreign "yaml_parser_initialize" C.(ptr T.Parser.t @-> returning int)
 

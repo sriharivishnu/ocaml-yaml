@@ -222,8 +222,9 @@ type parser = {
 }
 
 let parser str =
-  let p = Ctypes.(allocate_n T.Parser.t ~count:1) in
-  let event = Ctypes.(allocate_n T.Event.t ~count:1) in
+  let p = Ctypes.(allocate_n T.Parser.t ~count:1 ~finalise:B.parser_delete) in
+  let event = Ctypes.(allocate_n T.Event.t ~count:1 ~finalise:B.event_delete) in
+
   let r = B.parser_init p in
   let buf = Ctypes.CArray.of_string str in
   let buf_ptr = Ctypes.CArray.start buf in
@@ -249,7 +250,12 @@ let do_parse { p; event } =
         ^ Unsigned.Size_t.to_string po
   in
   match r with
-  | 1 -> Event.of_ffi !@event |> Result.ok
+  | 1 ->
+      let event_and_pos = Event.of_ffi !@event in
+      (* [T.Event.t] is safe to clear since all relevant fields have been copied
+         to [Event.t] (ctypes copies strings) *)
+      B.event_delete event;
+      Result.ok event_and_pos
   | n ->
       Error
         (`Msg
@@ -269,8 +275,8 @@ let emitter_written { written; _ } =
   Ctypes.(!@written) |> Unsigned.Size_t.to_int
 
 let emitter ?(len = 65535 * 4) () =
-  let e = Ctypes.(allocate_n T.Emitter.t ~count:1) in
-  let event = Ctypes.(allocate_n T.Event.t ~count:1) in
+  let e = Ctypes.(allocate_n T.Emitter.t ~count:1 ~finalise:B.emitter_delete) in
+  let event = Ctypes.(allocate_n T.Event.t ~count:1 ~finalise:B.event_delete) in
   let written = Ctypes.allocate_n Ctypes.size_t ~count:1 in
   let r = B.emitter_init e in
   let buf = Ctypes.(allocate_n Ctypes.char ~count:len) in
